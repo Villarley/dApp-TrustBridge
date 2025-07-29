@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
-import { TRUSTBRIDGE_POOL_ID, TOKENS } from '@/config/contracts';
+import { useState, useEffect, useCallback } from "react";
+import { poolService, PoolData } from "@/lib/services/poolService";
+import { toast } from "sonner";
 
-export interface PoolData {
+export interface UsePoolDataReturn {
+  // Core data
   totalDeposits: Map<string, bigint>;
   totalBorrows: Map<string, bigint>;
-  bRate: number;
+  reserves: Map<string, unknown>;
   poolMetadata: {
     name: string;
     oracle: string;
@@ -17,100 +19,136 @@ export interface PoolData {
     totalShares: bigint;
     totalTokens: bigint;
   } | null;
+
+  // State management
   loading: boolean;
   error: string | null;
   lastUpdated: Date | null;
-}
+  isInitializing: boolean;
 
-export interface UsePoolDataReturn extends PoolData {
+  // Actions
   refetch: () => Promise<void>;
+  clearError: () => void;
 }
 
 /**
- * React hook for fetching and polling TrustBridge pool data
- * Fetches pool metadata via blend-sdk and polls every 30s for real-time updates
+ * Enhanced React hook for fetching and polling TrustBridge pool data
+ * Connects to real blockchain data with proper loading states and error handling
  */
 export function usePoolData(): UsePoolDataReturn {
   const [poolData, setPoolData] = useState<PoolData>({
     totalDeposits: new Map(),
     totalBorrows: new Map(),
-    bRate: 0.05, // 5% as deployed
+    reserves: new Map(),
     poolMetadata: null,
     backstopStatus: null,
-    loading: true,
-    error: null,
-    lastUpdated: null,
+    lastUpdated: new Date(),
   });
 
-  const fetchPoolData = useCallback(async () => {
-    if (!TRUSTBRIDGE_POOL_ID) {
-      setPoolData(prev => ({
-        ...prev,
-        loading: false,
-        error: 'Pool ID not configured',
-      }));
-      return;
-    }
+  const [loading, setLoading] = useState(true);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  const fetchPoolData = useCallback(async (showToast = false) => {
     try {
-      setPoolData(prev => ({ ...prev, loading: true, error: null }));
+      setLoading(true);
+      setError(null);
 
-      // For now, return mock data that matches our deployed pool
-      // This can be replaced with actual Blend SDK calls once the API is clarified
-      const mockTotalDeposits = new Map<string, bigint>();
-      const mockTotalBorrows = new Map<string, bigint>();
-      
-      // Mock some realistic values for our XLM/USDC pool
-      mockTotalDeposits.set('XLM', BigInt(50000 * 1e7)); // 50,000 XLM
-      mockTotalDeposits.set('USDC', BigInt(10000 * 1e7)); // 10,000 USDC
-      mockTotalBorrows.set('XLM', BigInt(5000 * 1e7)); // 5,000 XLM borrowed
-      mockTotalBorrows.set('USDC', BigInt(2000 * 1e7)); // 2,000 USDC borrowed
-      
-      setPoolData({
-        totalDeposits: mockTotalDeposits,
-        totalBorrows: mockTotalBorrows,
-        bRate: 0.05, // 5% backstop rate as deployed
-        poolMetadata: {
-          name: 'TrustBridge Pool',
-          oracle: 'CCYHURAC5VTN2ZU663UUS5F24S4GURDPO4FHZ75JLN5DMLRTLCG44H44', // oraclemock from testnet
-          backstopRate: 0.05,
-          maxPositions: 4,
-          reserves: [TOKENS.XLM, TOKENS.USDC],
-        },
-        backstopStatus: {
-          isActive: true,
-          totalShares: BigInt(1000 * 1e7),
-          totalTokens: BigInt(1000 * 1e7),
-        },
-        loading: false,
-        error: null,
-        lastUpdated: new Date(),
+      if (showToast) {
+        toast.info("Refreshing pool data...");
+      }
+
+      const data = await poolService.fetchPoolData();
+
+      setPoolData(data);
+
+      if (showToast) {
+        toast.success("Pool data updated successfully");
+      }
+
+      console.log("Pool data updated:", {
+        totalDeposits: Array.from(data.totalDeposits.entries()),
+        totalBorrows: Array.from(data.totalBorrows.entries()),
+        lastUpdated: data.lastUpdated,
       });
-
     } catch (error) {
-      console.error('Error fetching pool data:', error);
-      setPoolData(prev => ({
-        ...prev,
-        loading: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch pool data',
-      }));
+      console.error("Error fetching pool data:", error);
+
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to fetch pool data";
+
+      setError(errorMessage);
+
+      if (showToast) {
+        toast.error(`Failed to update pool data: ${errorMessage}`);
+      }
+    } finally {
+      setLoading(false);
+      setIsInitializing(false);
     }
   }, []);
 
-  // Initial fetch and polling setup
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  // Initialize and set up polling
   useEffect(() => {
-    fetchPoolData();
+    let mounted = true;
+
+    const initializeAndFetch = async () => {
+      try {
+        setIsInitializing(true);
+
+        // Initialize pool service
+        await poolService.initialize();
+
+        if (mounted) {
+          await fetchPoolData();
+        }
+      } catch (error) {
+        console.error("Failed to initialize pool service:", error);
+        if (mounted) {
+          setError("Failed to connect to pool contract");
+          setLoading(false);
+          setIsInitializing(false);
+        }
+      }
+    };
+
+    initializeAndFetch();
 
     // Set up polling every 30 seconds
-    const pollInterval = setInterval(fetchPoolData, 30000);
+    const pollInterval = setInterval(() => {
+      if (mounted) {
+        fetchPoolData();
+      }
+    }, 30000);
 
-    return () => clearInterval(pollInterval);
+    return () => {
+      mounted = false;
+      clearInterval(pollInterval);
+    };
   }, [fetchPoolData]);
 
   return {
-    ...poolData,
-    refetch: fetchPoolData,
+    // Core data
+    totalDeposits: poolData.totalDeposits,
+    totalBorrows: poolData.totalBorrows,
+    reserves: poolData.reserves,
+    poolMetadata: poolData.poolMetadata,
+    backstopStatus: poolData.backstopStatus,
+
+    // State management
+    loading,
+    error,
+    lastUpdated: poolData.lastUpdated,
+    isInitializing,
+
+    // Actions
+    refetch: () => fetchPoolData(true),
+    clearError,
   };
 }
 
-export default usePoolData; 
+export default usePoolData;

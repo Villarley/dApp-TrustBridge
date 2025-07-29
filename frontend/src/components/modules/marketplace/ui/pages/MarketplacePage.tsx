@@ -5,6 +5,7 @@ import { BorrowModal } from "../components/BorrowModal";
 import { ProvideLiquidityModal } from "../components/ProvideLiquidityModal";
 import { SupplyUSDCModal } from "../components/SupplyUSDCModal";
 import { SupplyXLMCollateralModal } from "../components/SupplyXLMCollateralModal";
+import { BorrowAPYDisplay } from "../components/BorrowAPYDisplay";
 // Pool Data Interface
 interface PoolReserve {
   symbol: string;
@@ -26,6 +27,7 @@ export default function Marketplace() {
     showSupplyXLMModal,
     showProvideLiquidityModal,
     mockPoolData,
+    realTimePoolData,
     POOL_CONFIG,
     ORACLE_ID,
     setSupplyAmount,
@@ -40,6 +42,7 @@ export default function Marketplace() {
     openProvideLiquidityModal,
     closeProvideLiquidityModal,
     handleSupplySuccess,
+    handleBorrowSuccess,
     isWalletConnected,
     isPoolDeployed,
     canSupplyToPool,
@@ -154,6 +157,25 @@ export default function Marketplace() {
             Optimal range: 50-80%
           </div>
         </div>
+      </div>
+
+      {/* Real-time Borrow APY Display */}
+      <div className="mb-8">
+        <BorrowAPYDisplay
+          supplied={{
+            USDC: Number(realTimePoolData.totalDeposits.get("USDC") || 0) / 1e7,
+            XLM: Number(realTimePoolData.totalDeposits.get("XLM") || 0) / 1e7,
+            TBRG: Number(realTimePoolData.totalDeposits.get("TBRG") || 0) / 1e7,
+          }}
+          borrowed={{
+            USDC: Number(realTimePoolData.totalBorrows.get("USDC") || 0) / 1e7,
+            XLM: Number(realTimePoolData.totalBorrows.get("XLM") || 0) / 1e7,
+            TBRG: Number(realTimePoolData.totalBorrows.get("TBRG") || 0) / 1e7,
+          }}
+          loading={realTimePoolData.loading || realTimePoolData.isInitializing}
+          error={realTimePoolData.error}
+          lastUpdated={realTimePoolData.lastUpdated}
+        />
       </div>
 
       {/* Pool Card */}
@@ -524,6 +546,7 @@ export default function Marketplace() {
         onClose={closeBorrowModal}
         poolData={mockPoolData}
         poolId={deployedPoolId || ""}
+        onSuccess={handleBorrowSuccess}
       />
       <SupplyUSDCModal
         isOpen={showSupplyUSDCModal}

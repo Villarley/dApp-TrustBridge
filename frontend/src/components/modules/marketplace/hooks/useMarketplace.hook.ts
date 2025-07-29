@@ -14,6 +14,7 @@ import {
 } from "@/helpers/pool-deployment.helper";
 import { kit } from "@/config/wallet-kit";
 import { usePoolData } from "@/hooks/usePoolData";
+import { useBorrowAPY } from "@/hooks/useBorrowAPY";
 
 // Pool Data Interface
 interface PoolReserve {
@@ -49,6 +50,26 @@ export function useMarketplace() {
 
   // Use real-time pool data from hook
   const realTimePoolData = usePoolData();
+
+  // Convert pool data to format expected by useBorrowAPY
+  const suppliedAmounts = {
+    USDC: Number(realTimePoolData.totalDeposits.get("USDC") || 0) / 1e7,
+    XLM: Number(realTimePoolData.totalDeposits.get("XLM") || 0) / 1e7,
+    TBRG: Number(realTimePoolData.totalDeposits.get("TBRG") || 0) / 1e7,
+  };
+
+  const borrowedAmounts = {
+    USDC: Number(realTimePoolData.totalBorrows.get("USDC") || 0) / 1e7,
+    XLM: Number(realTimePoolData.totalBorrows.get("XLM") || 0) / 1e7,
+    TBRG: Number(realTimePoolData.totalBorrows.get("TBRG") || 0) / 1e7,
+  };
+
+  // Calculate real-time borrow APY
+  const {
+    rates: realTimeBorrowAPY,
+    refetch: refetchBorrowAPY,
+    apyHistory,
+  } = useBorrowAPY(suppliedAmounts, borrowedAmounts);
 
   // Mock data for compatibility (can be removed later)
   const mockPoolData: PoolData = {
@@ -176,6 +197,12 @@ export function useMarketplace() {
   // Success handlers
   const handleSupplySuccess = () => {
     realTimePoolData.refetch();
+    refetchBorrowAPY();
+  };
+
+  const handleBorrowSuccess = () => {
+    realTimePoolData.refetch();
+    refetchBorrowAPY();
   };
 
   // Computed values
@@ -200,6 +227,8 @@ export function useMarketplace() {
     // Data
     mockPoolData,
     realTimePoolData,
+    realTimeBorrowAPY,
+    apyHistory,
     walletAddress,
 
     // Config
@@ -223,6 +252,7 @@ export function useMarketplace() {
 
     // Success handlers
     handleSupplySuccess,
+    handleBorrowSuccess,
 
     // Computed values
     isWalletConnected,
