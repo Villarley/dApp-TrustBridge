@@ -23,9 +23,15 @@ interface BorrowModalProps {
   onClose: () => void;
   poolData: PoolData | null;
   poolId?: string;
+  onSuccess?: () => void;
 }
 
-export function BorrowModal({ isOpen, onClose, poolId }: BorrowModalProps) {
+export function BorrowModal({
+  isOpen,
+  onClose,
+  poolId,
+  onSuccess,
+}: BorrowModalProps) {
   const {
     borrowAmount,
     loading,
@@ -36,7 +42,7 @@ export function BorrowModal({ isOpen, onClose, poolId }: BorrowModalProps) {
     isAtRisk,
     isDangerous,
     isBorrowDisabled,
-  } = useBorrow({ isOpen, onClose, poolId });
+  } = useBorrow({ isOpen, onClose, poolId, onSuccess });
 
   if (!isOpen) return null;
 

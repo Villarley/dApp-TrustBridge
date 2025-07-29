@@ -12,9 +12,15 @@ interface UseBorrowProps {
   isOpen: boolean;
   onClose: () => void;
   poolId?: string;
+  onSuccess?: () => void;
 }
 
-export function useBorrow({ isOpen, onClose, poolId }: UseBorrowProps) {
+export function useBorrow({
+  isOpen,
+  onClose,
+  poolId,
+  onSuccess,
+}: UseBorrowProps) {
   const { walletAddress } = useWalletContext();
   const [borrowAmount, setBorrowAmount] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
@@ -157,6 +163,9 @@ export function useBorrow({ isOpen, onClose, poolId }: UseBorrowProps) {
               collateralRequired: estimates.requiredCollateral,
               transactionHash: result.hash,
             });
+
+            // Call success callback to trigger APY refresh
+            onSuccess?.();
 
             onClose();
             return;
