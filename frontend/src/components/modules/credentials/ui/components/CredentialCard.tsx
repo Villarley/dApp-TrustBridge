@@ -132,7 +132,7 @@ export function CredentialCard({
   return (
     <Card className="card hover:shadow-lg transition-shadow">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+        <div className="flex justify-between">
           <div className="flex items-center gap-3">
             <i className="fas fa-certificate text-success text-xl"></i>
             <div>
@@ -143,11 +143,11 @@ export function CredentialCard({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Badge className={`${statusColor} border`}>
-              <i className={`${statusIcon} mr-1`}></i>
-              {currentStatus}
-              {isFetching && <i className="fas fa-spinner fa-spin ml-1"></i>}
+          <div className="ml-6 flex items-center justify-center gap-2">
+            <Badge className={`${statusColor} border flex items-center`}>
+              <i className={`${statusIcon} mr-1.5`}></i>
+              <span className="text-xs font-medium">{currentStatus}</span>
+              {isFetching && <i className="fas fa-spinner fa-spin ml-1.5"></i>}
             </Badge>
 
             {showActions && (
