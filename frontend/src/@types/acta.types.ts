@@ -167,6 +167,74 @@ export type PoolDuration = "30d" | "90d" | "180d" | "365d" | "perpetual";
 export type PoolRiskLevel = "low" | "medium" | "high" | "very-high";
 
 /**
+ * Pool participation duration for credentials (Phase 2)
+ */
+export type ParticipationDuration = "3+ months" | "6+ months" | "12+ months";
+
+/**
+ * Risk level for credentials (Phase 2)
+ */
+export type CredentialRiskLevel = "Conservative" | "Moderate" | "Aggressive";
+
+/**
+ * Performance tier for credentials (Phase 2)
+ */
+export type PerformanceTier =
+  | "No liquidations"
+  | "Stable participant"
+  | "Recovered events";
+
+/**
+ * Pool type experience for credentials (Phase 2)
+ */
+export type PoolTypeExperience =
+  | "Multi-asset"
+  | "Stablecoin"
+  | "LSD"
+  | "LP-Perp";
+
+/**
+ * Pool participation reputation claims for credential creation
+ */
+export interface ReputationClaims {
+  participationDuration: ParticipationDuration;
+  riskLevel: CredentialRiskLevel;
+  performanceTier: PerformanceTier;
+  poolTypeExperience: PoolTypeExperience[];
+}
+
+/**
+ * Pool participation credential data structure (Phase 2)
+ */
+export interface PoolParticipationCredentialData {
+  type: "PoolParticipationCredential";
+  credentialSubject: {
+    reputationClaims: ReputationClaims;
+  };
+  issuer?: string;
+  issuanceDate: string;
+  expirationDate?: string;
+}
+
+/**
+ * Local credential record for localStorage management
+ */
+export interface LocalCredentialRecord {
+  localId: string;
+  contractId: string;
+  hash: string;
+  displayData: {
+    type: string;
+    participationDuration: ParticipationDuration;
+    riskLevel: CredentialRiskLevel;
+    performanceTier: PerformanceTier;
+    poolTypeExperience: PoolTypeExperience[];
+    issuer?: string;
+  };
+  createdAt: string;
+}
+
+/**
  * Pool performance metrics
  */
 export interface PoolPerformance {

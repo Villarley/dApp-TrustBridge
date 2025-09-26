@@ -19,41 +19,30 @@ interface ActaResponse<T = unknown> {
 }
 
 /**
- * Credential creation request body
+ * Credential creation request body (generic)
  */
-interface CreateCredentialBody {
-  credentialSubject: {
-    id: string;
-    [key: string]: unknown;
-  };
-  issuer: {
-    id: string;
-    [key: string]: unknown;
-  };
-  issuanceDate?: string;
-  expirationDate?: string;
-  credentialStatus?: {
-    id: string;
+interface CreateCredentialBody extends Record<string, unknown> {
+  data: {
     type: string;
+    credentialSubject: {
+      [key: string]: unknown;
+    };
+    issuer?: string;
+    issuanceDate: string;
+    expirationDate?: string;
   };
-  evidence?: Array<{
-    id: string;
-    type: string;
-    [key: string]: unknown;
-  }>;
-  [key: string]: unknown;
+  metadata?: Record<string, unknown>;
 }
 
 /**
- * Credential response data
+ * Credential response data (matches actual Acta API response)
  */
 interface CredentialData {
-  id: string;
+  contractId: string;
   hash: string;
-  status: string;
+  transactionHash: string;
   createdAt: string;
-  updatedAt: string;
-  credential: CreateCredentialBody;
+  ledgerSequence: number;
 }
 
 /**
@@ -131,24 +120,24 @@ export class ActaClient {
 
   /**
    * Ping the ACTA service
-   * GET /acta/ping
+   * GET /ping
    */
   async ping(
     options?: RequestOptions,
   ): Promise<ActaResponse<{ message: string; timestamp: string }>> {
-    return this.makeRequest("GET", "/acta/ping", undefined, options);
+    return this.makeRequest("GET", "/ping", undefined, options);
   }
 
   /**
    * Check ACTA service health
-   * GET /acta/health
+   * GET /health
    */
   async health(
     options?: RequestOptions,
   ): Promise<
     ActaResponse<{ status: string; timestamp: string; version?: string }>
   > {
-    return this.makeRequest("GET", "/acta/health", undefined, options);
+    return this.makeRequest("GET", "/health", undefined, options);
   }
 
   // ============================================================================
@@ -157,18 +146,28 @@ export class ActaClient {
 
   /**
    * Create a new credential
-   * POST /acta/credentials
+   * POST /credentials
    */
   async createCredential(
     body: CreateCredentialBody,
     options?: RequestOptions,
   ): Promise<ActaResponse<CredentialData>> {
-    return this.makeRequest("POST", "/acta/credentials", body, options);
+    return this.makeRequest("POST", "/credentials", body, options);
+  }
+
+  /**
+   * List all credentials (if supported by API)
+   * GET /credentials
+   */
+  async listCredentials(
+    options?: RequestOptions,
+  ): Promise<ActaResponse<CredentialData[]>> {
+    return this.makeRequest("GET", "/credentials", undefined, options);
   }
 
   /**
    * Get credential by contract ID
-   * GET /acta/credentials/contract/{id}
+   * GET /credentials/contract/{id}
    */
   async getByContractId(
     id: string,
@@ -176,7 +175,7 @@ export class ActaClient {
   ): Promise<ActaResponse<CredentialData>> {
     return this.makeRequest(
       "GET",
-      `/acta/credentials/contract/${encodeURIComponent(id)}`,
+      `/credentials/contract/${encodeURIComponent(id)}`,
       undefined,
       options,
     );
@@ -184,7 +183,7 @@ export class ActaClient {
 
   /**
    * Get credential by hash
-   * GET /acta/credentials/hash/{hash}
+   * GET /credentials/hash/{hash}
    */
   async getByHash(
     hash: string,
@@ -192,7 +191,7 @@ export class ActaClient {
   ): Promise<ActaResponse<CredentialData>> {
     return this.makeRequest(
       "GET",
-      `/acta/credentials/hash/${encodeURIComponent(hash)}`,
+      `/credentials/hash/${encodeURIComponent(hash)}`,
       undefined,
       options,
     );
@@ -200,7 +199,7 @@ export class ActaClient {
 
   /**
    * Update credential status
-   * PUT /acta/credentials/{id}/status
+   * PUT /credentials/{id}/status
    */
   async updateStatus(
     id: string,
@@ -210,7 +209,7 @@ export class ActaClient {
     const body = { status };
     return this.makeRequest(
       "PUT",
-      `/acta/credentials/${encodeURIComponent(id)}/status`,
+      `/credentials/${encodeURIComponent(id)}/status`,
       body,
       options,
     );
