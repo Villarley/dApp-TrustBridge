@@ -207,7 +207,7 @@ export default function ModalsWithCredentialsPage() {
                 <ul className="space-y-1 text-sm text-gray-400">
                   <li>
                     • <strong>Non-intrusive:</strong> Credential selection is
-                    optional and doesn't block core flows
+                    optional and doesn&apos;t block core flows
                   </li>
                   <li>
                     • <strong>Contextual hints:</strong> Different benefits
@@ -230,12 +230,12 @@ export default function ModalsWithCredentialsPage() {
                 </h5>
                 <ul className="space-y-1 text-sm text-gray-400">
                   <li>
-                    • <strong>Borrow Modal:</strong> "You may qualify for better
-                    interest rates"
+                    • <strong>Borrow Modal:</strong> &quot;You may qualify for
+                    better interest rates&quot;
                   </li>
                   <li>
-                    • <strong>Supply Modal:</strong> "You may qualify for higher
-                    APY and reduced fees"
+                    • <strong>Supply Modal:</strong> &quot;You may qualify for
+                    higher APY and reduced fees&quot;
                   </li>
                   <li>
                     • <strong>Both:</strong> Show selected credential details

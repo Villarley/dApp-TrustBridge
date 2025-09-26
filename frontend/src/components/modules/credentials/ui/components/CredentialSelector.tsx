@@ -233,7 +233,7 @@ export function CredentialSelector({
                   No Active Credentials
                 </h3>
                 <p className="text-gray-400 mb-4">
-                  You don't have any active credentials yet. Create one to
+                  You don&apos;t have any active credentials yet. Create one to
                   verify your reputation.
                 </p>
                 <Button
