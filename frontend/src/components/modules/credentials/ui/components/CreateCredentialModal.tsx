@@ -82,6 +82,7 @@ interface CreateCredentialModalProps {
   isOpen: boolean;
   onClose: () => void;
   client: ActaClient;
+  onSuccess?: () => void;
 }
 
 /**
@@ -170,6 +171,7 @@ export function CreateCredentialModal({
   isOpen,
   onClose,
   client,
+  onSuccess,
 }: CreateCredentialModalProps) {
   const form = useForm<CredentialFormValues>({
     resolver: zodResolver(credentialFormSchema),
@@ -199,6 +201,7 @@ export function CreateCredentialModal({
           description: `Stored on Stellar blockchain. Contract: ${contractDisplay}`,
         });
         form.reset();
+        onSuccess?.();
         onClose();
       },
       onError: (errorMessage) => {
