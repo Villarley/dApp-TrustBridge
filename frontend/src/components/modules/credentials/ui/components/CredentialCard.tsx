@@ -88,7 +88,7 @@ export function CredentialCard({
       } else {
         toast.error(`Failed to update credential status`);
       }
-    } catch (error) {
+    } catch {
       toast.error(`Error updating credential status`);
     } finally {
       setIsUpdating(false);
@@ -106,7 +106,7 @@ export function CredentialCard({
       } else {
         toast.error("Failed to copy to clipboard");
       }
-    } catch (error) {
+    } catch {
       toast.error("Error sharing credential");
     } finally {
       setIsSharing(false);
