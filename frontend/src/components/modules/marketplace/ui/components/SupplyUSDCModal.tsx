@@ -2,6 +2,10 @@
 
 import { useSupply } from "../../hooks/useSupply.hook";
 import { useWalletBalance } from "@/components/modules/marketplace/hooks/useWalletBalance.hook";
+import { CredentialSelector } from "@/components/modules/credentials/ui/components/CredentialSelector";
+import { CredentialWithStatus } from "@/components/modules/credentials/hooks/useCredentials";
+import { ActaClient } from "@/lib/acta/client";
+import { useState } from "react";
 
 interface SupplyUSDCModalProps {
   isOpen: boolean;
@@ -14,11 +18,21 @@ export function SupplyUSDCModal({
   onClose,
   onSuccess,
 }: SupplyUSDCModalProps) {
+  const [selectedCredential, setSelectedCredential] = useState<
+    CredentialWithStatus | undefined
+  >();
+
   const {
     balancesFormatted,
     loading: loadingBalances,
     refresh,
   } = useWalletBalance();
+
+  // Initialize Acta client (in a real app, this would come from context/config)
+  const actaClient = new ActaClient({
+    baseUrl: process.env.NEXT_PUBLIC_ACTA_API_URL || "http://localhost:3001",
+    apiKey: process.env.NEXT_PUBLIC_ACTA_API_KEY,
+  });
 
   const {
     supplyAmount,
@@ -109,6 +123,41 @@ export function SupplyUSDCModal({
           </div>
         </div>
 
+        {/* Credential Selection (Optional) */}
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-2">
+            <i className="fas fa-certificate text-green-400 mr-2"></i>
+            Verify Reputation (Optional)
+          </label>
+          <CredentialSelector
+            client={actaClient}
+            onCredentialSelect={setSelectedCredential}
+            selectedCredential={selectedCredential}
+            placeholder="Select a credential to unlock better terms"
+          />
+          {selectedCredential && (
+            <div className="mt-2 p-3 bg-green-900/20 border border-green-700 rounded-lg">
+              <div className="flex items-center gap-2">
+                <i className="fas fa-check-circle text-green-400"></i>
+                <span className="text-sm text-green-300">
+                  Credential selected:{" "}
+                  {selectedCredential.displayData.riskLevel} •{" "}
+                  {selectedCredential.displayData.performanceTier}
+                </span>
+              </div>
+              {/* TODO: Implement dynamic APY calculation based on selectedCredential
+                  - Conservative risk level: +0.5% APY bonus
+                  - No liquidations performance: +0.75% APY bonus
+                  - 12+ months duration: +0.5% APY bonus
+                  - Calculate final APY and update estimates dynamically
+                  - Send credential data to smart contract for on-chain verification */}
+              <p className="text-xs text-green-200 mt-1">
+                You may qualify for higher APY and reduced fees
+              </p>
+            </div>
+          )}
+        </div>
+
         {/* Transaction Preview */}
         {estimates.expectedBTokens > 0 && (
           <div className="mb-6">
@@ -191,6 +240,10 @@ export function SupplyUSDCModal({
           >
             Cancel
           </button>
+          {/* TODO: Modify handleSupplyUSDC to include selectedCredential data
+              - Pass credential contractId and hash to smart contract
+              - Include risk level and performance tier for APY calculation
+              - Verify credential on-chain before applying benefits */}
           <button
             onClick={handleSupplyUSDC}
             disabled={isSupplyDisabled}

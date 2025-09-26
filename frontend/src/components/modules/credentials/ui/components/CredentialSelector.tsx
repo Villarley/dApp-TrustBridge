@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -49,7 +48,7 @@ function CredentialOption({
   };
 
   return (
-    <Card
+    <div
       className={`card cursor-pointer transition-all ${
         isSelected
           ? "ring-2 ring-success bg-success/10"
@@ -57,7 +56,7 @@ function CredentialOption({
       }`}
       onClick={onSelect}
     >
-      <CardContent className="p-4">
+      <div className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <i className="fas fa-certificate text-success"></i>
@@ -98,8 +97,8 @@ function CredentialOption({
         <div className="mt-2 text-xs text-gray-400">
           Contract: {contractId.substring(0, 8)}...
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -187,21 +186,21 @@ export function CredentialSelector({
 
           {/* Error State */}
           {error && (
-            <Card className="card border-red-700 bg-red-900/20">
-              <CardContent className="p-4 text-center">
+            <div className="card border-red-700 bg-red-900/20">
+              <div className="p-4 text-center">
                 <i className="fas fa-exclamation-triangle text-red-400 text-xl mb-2"></i>
                 <p className="text-red-300">Failed to load credentials</p>
                 <p className="text-red-200 text-sm">{error}</p>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
           {/* Loading State */}
           {isLoading && (
             <div className="space-y-3">
               {[1, 2].map((i) => (
-                <Card key={i} className="card">
-                  <CardContent className="p-4">
+                <div key={i} className="card">
+                  <div className="p-4">
                     <div className="animate-pulse">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
@@ -219,16 +218,16 @@ export function CredentialSelector({
                         ))}
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               ))}
             </div>
           )}
 
           {/* Empty State */}
           {!isLoading && !error && activeCredentials.length === 0 && (
-            <Card className="card">
-              <CardContent className="p-8 text-center">
+            <div className="card">
+              <div className="p-8 text-center">
                 <i className="fas fa-certificate text-4xl text-gray-600 mb-4"></i>
                 <h3 className="text-lg font-semibold text-white mb-2">
                   No Active Credentials
@@ -244,8 +243,8 @@ export function CredentialSelector({
                   <i className="fas fa-plus mr-2"></i>
                   Create Credential
                 </Button>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
           {/* Credentials List */}

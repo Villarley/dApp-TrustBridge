@@ -2,14 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { useBorrow } from "../../hooks/useBorrow.hook";
-import { 
-  monitorHealthFactor, 
-  getHealthFactorAlerts, 
+import {
+  monitorHealthFactor,
+  getHealthFactorAlerts,
   calculateMaxBorrowable,
   calculateLiquidationPrice,
-  type HealthFactorResult 
+  type HealthFactorResult,
 } from "@/helpers/health-factor.helper";
 import { useWalletContext } from "@/providers/wallet.provider";
+import { CredentialSelector } from "@/components/modules/credentials/ui/components/CredentialSelector";
+import { CredentialWithStatus } from "@/components/modules/credentials/hooks/useCredentials";
+import { ActaClient } from "@/lib/acta/client";
 
 interface PoolReserve {
   symbol: string;
@@ -36,10 +39,21 @@ interface BorrowModalProps {
 
 export function BorrowModal({ isOpen, onClose, poolId }: BorrowModalProps) {
   const { walletAddress } = useWalletContext();
-  const [healthFactor, setHealthFactor] = useState<HealthFactorResult | null>(null);
+  const [healthFactor, setHealthFactor] = useState<HealthFactorResult | null>(
+    null,
+  );
   const [alerts, setAlerts] = useState<string[]>([]);
   const [maxBorrowable, setMaxBorrowable] = useState<number>(0);
   const [liquidationPrice, setLiquidationPrice] = useState<number>(0);
+  const [selectedCredential, setSelectedCredential] = useState<
+    CredentialWithStatus | undefined
+  >();
+
+  // Initialize Acta client (in a real app, this would come from context/config)
+  const actaClient = new ActaClient({
+    baseUrl: process.env.NEXT_PUBLIC_ACTA_API_URL || "http://localhost:3001",
+    apiKey: process.env.NEXT_PUBLIC_ACTA_API_KEY,
+  });
 
   const {
     borrowAmount,
@@ -59,20 +73,20 @@ export function BorrowModal({ isOpen, onClose, poolId }: BorrowModalProps) {
     const stopMonitoring = monitorHealthFactor(walletAddress, (result) => {
       setHealthFactor(result);
       setAlerts(getHealthFactorAlerts(result));
-      
+
       // Calculate max borrowable amount
       const maxBorrow = calculateMaxBorrowable(
         result.collateralValue,
         85, // USDC collateral factor
-        result.borrowedValue
+        result.borrowedValue,
       );
       setMaxBorrowable(maxBorrow);
-      
+
       // Calculate liquidation price
       const liqPrice = calculateLiquidationPrice(
         result.borrowedValue,
         result.collateralValue,
-        85 // USDC collateral factor
+        85, // USDC collateral factor
       );
       setLiquidationPrice(liqPrice);
     });
@@ -107,17 +121,21 @@ export function BorrowModal({ isOpen, onClose, poolId }: BorrowModalProps) {
               <div
                 key={index}
                 className={`p-3 rounded border-l-4 ${
-                  alert.includes('CRITICAL')
-                    ? 'bg-red-900 bg-opacity-20 border-red-500 text-red-300'
-                    : alert.includes('WARNING')
-                    ? 'bg-yellow-900 bg-opacity-20 border-yellow-500 text-yellow-300'
-                    : 'bg-blue-900 bg-opacity-20 border-blue-500 text-blue-300'
+                  alert.includes("CRITICAL")
+                    ? "bg-red-900 bg-opacity-20 border-red-500 text-red-300"
+                    : alert.includes("WARNING")
+                      ? "bg-yellow-900 bg-opacity-20 border-yellow-500 text-yellow-300"
+                      : "bg-blue-900 bg-opacity-20 border-blue-500 text-blue-300"
                 }`}
               >
                 <div className="flex items-start gap-2">
-                  <i className={`fas ${
-                    alert.includes('CRITICAL') ? 'fa-exclamation-triangle' : 'fa-info-circle'
-                  } mt-0.5`}></i>
+                  <i
+                    className={`fas ${
+                      alert.includes("CRITICAL")
+                        ? "fa-exclamation-triangle"
+                        : "fa-info-circle"
+                    } mt-0.5`}
+                  ></i>
                   <div className="text-sm">{alert}</div>
                 </div>
               </div>
@@ -158,15 +176,55 @@ export function BorrowModal({ isOpen, onClose, poolId }: BorrowModalProps) {
                 <button
                   key={amount}
                   className={`btn-secondary text-xs flex-1 ${
-                    amount > maxBorrowable ? 'opacity-50 cursor-not-allowed' : ''
+                    amount > maxBorrowable
+                      ? "opacity-50 cursor-not-allowed"
+                      : ""
                   }`}
-                  onClick={() => amount <= maxBorrowable && setBorrowAmount(amount.toString())}
+                  onClick={() =>
+                    amount <= maxBorrowable &&
+                    setBorrowAmount(amount.toString())
+                  }
                   disabled={loading || amount > maxBorrowable}
                 >
                   ${amount}
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Credential Selection (Optional) */}
+          <div>
+            <label className="form-label mb-2">
+              <i className="fas fa-certificate text-success mr-2"></i>
+              Verify Reputation (Optional)
+            </label>
+            <CredentialSelector
+              client={actaClient}
+              onCredentialSelect={setSelectedCredential}
+              selectedCredential={selectedCredential}
+              placeholder="Select a credential to unlock better terms"
+            />
+            {selectedCredential && (
+              <div className="mt-2 p-3 bg-green-900/20 border border-green-700 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <i className="fas fa-check-circle text-green-400"></i>
+                  <span className="text-sm text-green-300">
+                    Credential selected:{" "}
+                    {selectedCredential.displayData.riskLevel} •{" "}
+                    {selectedCredential.displayData.performanceTier}
+                  </span>
+                </div>
+                {/* TODO: Implement dynamic interest rate calculation based on selectedCredential
+                    - Conservative risk level: -0.5% interest rate discount
+                    - No liquidations performance: -0.75% interest rate discount  
+                    - 12+ months duration: -0.5% interest rate discount
+                    - Calculate final rate and update UI dynamically
+                    - Send credential data to smart contract for on-chain verification */}
+                <p className="text-xs text-green-200 mt-1">
+                  You may qualify for better interest rates
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Transaction Preview */}
@@ -182,9 +240,9 @@ export function BorrowModal({ isOpen, onClose, poolId }: BorrowModalProps) {
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm text-gray-400">Health Factor</span>
                   <div className="flex items-center gap-1">
-                    {healthFactor?.riskLevel === 'safe' ? (
+                    {healthFactor?.riskLevel === "safe" ? (
                       <i className="fas fa-check-circle text-success"></i>
-                    ) : healthFactor?.riskLevel === 'warning' ? (
+                    ) : healthFactor?.riskLevel === "warning" ? (
                       <i className="fas fa-exclamation-triangle text-warning"></i>
                     ) : (
                       <i className="fas fa-exclamation-triangle text-danger"></i>
@@ -193,22 +251,24 @@ export function BorrowModal({ isOpen, onClose, poolId }: BorrowModalProps) {
                 </div>
                 <div
                   className={`text-xl font-bold ${
-                    healthFactor?.riskLevel === 'safe'
+                    healthFactor?.riskLevel === "safe"
                       ? "text-success"
-                      : healthFactor?.riskLevel === 'warning'
+                      : healthFactor?.riskLevel === "warning"
                         ? "text-warning"
                         : "text-danger"
                   }`}
                 >
-                  {healthFactor?.healthFactor ? healthFactor.healthFactor.toFixed(2) : estimates.healthFactor.toFixed(2)}
+                  {healthFactor?.healthFactor
+                    ? healthFactor.healthFactor.toFixed(2)
+                    : estimates.healthFactor.toFixed(2)}
                 </div>
                 <div className="mt-2">
                   <div className="w-full bg-dark-tertiary rounded-full h-1.5">
                     <div
                       className={`h-1.5 rounded-full transition-all ${
-                        healthFactor?.riskLevel === 'safe'
+                        healthFactor?.riskLevel === "safe"
                           ? "bg-success"
-                          : healthFactor?.riskLevel === 'warning'
+                          : healthFactor?.riskLevel === "warning"
                             ? "bg-warning"
                             : "bg-danger"
                       }`}
@@ -219,9 +279,9 @@ export function BorrowModal({ isOpen, onClose, poolId }: BorrowModalProps) {
                   </div>
                   <div className="flex justify-between text-xs text-gray-400 mt-1">
                     <span>
-                      {healthFactor?.riskLevel === 'safe'
+                      {healthFactor?.riskLevel === "safe"
                         ? "Healthy position"
-                        : healthFactor?.riskLevel === 'warning'
+                        : healthFactor?.riskLevel === "warning"
                           ? "At risk"
                           : "Liquidation risk"}
                     </span>
@@ -281,7 +341,10 @@ export function BorrowModal({ isOpen, onClose, poolId }: BorrowModalProps) {
                       </span>
                     </div>
                     <div className="text-sm font-semibold text-white">
-                      ${liquidationPrice > 0 ? liquidationPrice.toFixed(2) : "--"}
+                      $
+                      {liquidationPrice > 0
+                        ? liquidationPrice.toFixed(2)
+                        : "--"}
                     </div>
                   </div>
                 </div>
@@ -290,23 +353,33 @@ export function BorrowModal({ isOpen, onClose, poolId }: BorrowModalProps) {
               {/* Current Position Summary */}
               {healthFactor && (
                 <div className="card p-3 mb-3">
-                  <div className="text-xs text-gray-400 mb-2">Current Position</div>
+                  <div className="text-xs text-gray-400 mb-2">
+                    Current Position
+                  </div>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
                       <span className="text-gray-400">Collateral:</span>
-                      <span className="text-white ml-1">${healthFactor.collateralValue.toLocaleString()}</span>
+                      <span className="text-white ml-1">
+                        ${healthFactor.collateralValue.toLocaleString()}
+                      </span>
                     </div>
                     <div>
                       <span className="text-gray-400">Borrowed:</span>
-                      <span className="text-white ml-1">${healthFactor.borrowedValue.toLocaleString()}</span>
+                      <span className="text-white ml-1">
+                        ${healthFactor.borrowedValue.toLocaleString()}
+                      </span>
                     </div>
                     <div>
                       <span className="text-gray-400">Ratio:</span>
-                      <span className="text-white ml-1">{healthFactor.collateralRatio.toFixed(1)}%</span>
+                      <span className="text-white ml-1">
+                        {healthFactor.collateralRatio.toFixed(1)}%
+                      </span>
                     </div>
                     <div>
                       <span className="text-gray-400">Max Borrow:</span>
-                      <span className="text-success ml-1">${maxBorrowable.toLocaleString()}</span>
+                      <span className="text-success ml-1">
+                        ${maxBorrowable.toLocaleString()}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -318,22 +391,31 @@ export function BorrowModal({ isOpen, onClose, poolId }: BorrowModalProps) {
           {(healthFactor || estimates.healthFactor > 0) && (
             <div
               className={`p-3 rounded border-l-4 ${
-                (healthFactor?.riskLevel || (isHealthy ? 'safe' : isAtRisk ? 'warning' : 'danger')) === 'safe'
+                (healthFactor?.riskLevel ||
+                  (isHealthy ? "safe" : isAtRisk ? "warning" : "danger")) ===
+                "safe"
                   ? "bg-green-900 bg-opacity-20 border-success text-success"
-                  : (healthFactor?.riskLevel || (isHealthy ? 'safe' : isAtRisk ? 'warning' : 'danger')) === 'warning'
+                  : (healthFactor?.riskLevel ||
+                        (isHealthy
+                          ? "safe"
+                          : isAtRisk
+                            ? "warning"
+                            : "danger")) === "warning"
                     ? "bg-yellow-900 bg-opacity-20 border-warning text-warning"
                     : "bg-red-900 bg-opacity-20 border-danger text-danger"
               }`}
             >
               <div className="flex items-start gap-2">
-                {(healthFactor?.riskLevel || (isHealthy ? 'safe' : isAtRisk ? 'warning' : 'danger')) === 'safe' ? (
+                {(healthFactor?.riskLevel ||
+                  (isHealthy ? "safe" : isAtRisk ? "warning" : "danger")) ===
+                "safe" ? (
                   <i className="fas fa-check-circle mt-0.5"></i>
                 ) : (
                   <i className="fas fa-exclamation-triangle mt-0.5"></i>
                 )}
                 <div className="text-sm">
-                  {healthFactor?.recommendations?.[0] || (
-                    isHealthy ? (
+                  {healthFactor?.recommendations?.[0] ||
+                    (isHealthy ? (
                       <>
                         <strong>Healthy Position:</strong> You have sufficient
                         collateral buffer for this borrow amount.
@@ -348,8 +430,7 @@ export function BorrowModal({ isOpen, onClose, poolId }: BorrowModalProps) {
                         <strong>Dangerous Position:</strong> This could lead to
                         immediate liquidation!
                       </>
-                    )
-                  )}
+                    ))}
                 </div>
               </div>
             </div>
@@ -377,14 +458,21 @@ export function BorrowModal({ isOpen, onClose, poolId }: BorrowModalProps) {
             >
               Cancel
             </button>
+            {/* TODO: Modify handleBorrow to include selectedCredential data
+                  - Pass credential contractId and hash to smart contract
+                  - Include risk level and performance tier for rate calculation
+                  - Verify credential on-chain before applying benefits */}
             <button
               className={`${
-                healthFactor?.riskLevel === 'liquidatable' || healthFactor?.riskLevel === 'danger'
-                  ? 'btn-danger'
-                  : 'btn-primary'
+                healthFactor?.riskLevel === "liquidatable" ||
+                healthFactor?.riskLevel === "danger"
+                  ? "btn-danger"
+                  : "btn-primary"
               }`}
               onClick={handleBorrow}
-              disabled={isBorrowDisabled || healthFactor?.riskLevel === 'liquidatable'}
+              disabled={
+                isBorrowDisabled || healthFactor?.riskLevel === "liquidatable"
+              }
             >
               {loading ? (
                 <>
